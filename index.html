@@ -164,21 +164,24 @@
         }
 
         var keyBuffer = "";
-        var bufferTime = 75;
+        var bufferTime = 200;
         var mousePrecision = 75;
+        var bufferSentTo = 0;
         function bufferKey(k) {
             keyBuffer += k;
             setTimeout(sendKeyBuffer, bufferTime);
         }
         function sendKeyBuffer() {
-            if (keyBuffer.length > 0) {
-                var okb = keyBuffer + "";
+            if (keyBuffer.length > bufferSentTo) {
+                var okb = keyBuffer.substr(bufferSentTo);
+                console.log("buf send: ", okb);
+                bufferSentTo += okb.length;
                 send("printf:" + okb, function(d) {
                     if (d == "OK") {
                         document.querySelector("#kbd").value = document.querySelector("#kbd").value.substring(okb.length);
+                        
                     }
                 });
-                keyBuffer = "";
             }
         }
 
@@ -200,7 +203,8 @@
                     bufferKey(char);
                 }
                 //document.querySelector("#kbd").value = '';
-                event.preventDefault();
+                if (event.keyCode == 9)
+                    event.preventDefault();
                 document.querySelector("#kbd").focus();
 
             }
@@ -268,6 +272,7 @@
         }
 
         todos = [];
+        todosRunning = false;
         function httpGetSync(theUrl, data, callback) {
             /*
             var xmlHttp = new XMLHttpRequest();
@@ -276,18 +281,24 @@
             callback(xmlHttp.responseText);
             */
            todos.push([theUrl, data, callback]);
-           if (todos.length == 1) {
+           if (!todosRunning) {
+               todosRunning = true;
                newTodo();
            }
            
         }
         function newTodo() {
-            if (todos.length == 0) return;
+            if (todos.length == 0) {
+                todosRunning = false;
+                return;
+            }
             var t = todos.pop(0);
             httpGetAsync(t[0], t[1], function(x) {
                    t[2](x);
                    if (todos.length > 0) {
                        newTodo();
+                   } else {
+                       todosRunning = false;
                    }
                })
         }
