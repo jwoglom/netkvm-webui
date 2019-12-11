@@ -169,8 +169,8 @@
         var bufferSentTo = 0;
         function bufferKey(k) {
             keyBuffer += k;
-            setTimeout(sendKeyBuffer, bufferTime);
         }
+        setInterval(sendKeyBuffer, bufferTime);
         function sendKeyBuffer() {
             if (keyBuffer.length > bufferSentTo) {
                 var okb = keyBuffer.substr(bufferSentTo);
@@ -198,6 +198,9 @@
                     char = char.toLowerCase();
                 console.log("char: ", event.keyCode, char);
                 if (event.keyCode < 65 || event.keyCode > 122) {
+                    if (event.keyCode == 13) {
+                        bufferKey(';keycode:' + 10 + ';printf:'); // handle enter
+                    }
                     bufferKey(';keycode:' + event.keyCode + ';printf:');
                 } else {
                     bufferKey(char);
@@ -210,6 +213,7 @@
             }
             document.querySelector("#kbd").focus();
             document.querySelector("#mouseprecision").value = mousePrecision;
+            document.querySelector(".mouseprecision").innerText = parseInt(mousePrecision);
             var origx = null;
             var origy = null;
             var origst = null;
@@ -230,6 +234,15 @@
                         origy = cury;
                         origst = +new Date;
                         send("move:"+dx+","+dy, function(d) {});
+                        var sum = 0;
+                        var cnt = 0;
+                        for (var i=times.length>=20 ? times.length - 10 : 0; i<times.length; i++) {
+                            sum += times[i];
+                            cnt++;
+                        }
+                        mousePrecision = sum / cnt;
+                        document.querySelector("#mouseprecision").value = mousePrecision;
+                        document.querySelector(".mouseprecision").innerText = parseInt(mousePrecision);
                     }
                 }
 
@@ -264,15 +277,26 @@
         function httpGetAsync(theUrl, data, callback) {
             var xmlHttp = new XMLHttpRequest();
             xmlHttp.onreadystatechange = function() { 
-                if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+                if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+                    if (xmlHttp.responseText == "ERROR") {
+                        handleError(data);
+                    }
                     callback(xmlHttp.responseText);
+                }
             }
             xmlHttp.open("POST", theUrl, true); // true for asynchronous 
             xmlHttp.send(data);
         }
 
+        function handleError(msg) {
+            document.querySelector('#connected').style.display = 'none';
+            document.querySelector('#error-response').style.display = 'block';
+            document.querySelector('.error-detail').innerText = msg;
+        }
+
         todos = [];
-        todosRunning = false;
+        lastsuccess = +new Date;
+        lastsent = +new Date;
         function httpGetSync(theUrl, data, callback) {
             /*
             var xmlHttp = new XMLHttpRequest();
@@ -281,26 +305,38 @@
             callback(xmlHttp.responseText);
             */
            todos.push([theUrl, data, callback]);
-           if (!todosRunning) {
-               todosRunning = true;
-               newTodo();
-           }
-           
+           document.querySelector('.outgoing').innerText = todos.length;
         }
-        function newTodo() {
-            if (todos.length == 0) {
-                todosRunning = false;
+
+        blocked = false;
+        times = [];
+        setInterval(function() {
+            loop();
+        }, 20);
+        function loop() {
+            if (blocked) {
+                setTimeout(function() {
+                    if (+new Date - lastsuccess > 10000 && todos.length > 0) {
+                        document.querySelector('#connected').style.display = 'none';
+                        document.querySelector('#lost-connect').style.display = 'block';
+                    }
+                }, 100);
                 return;
             }
-            var t = todos.pop(0);
-            httpGetAsync(t[0], t[1], function(x) {
-                   t[2](x);
-                   if (todos.length > 0) {
-                       newTodo();
-                   } else {
-                       todosRunning = false;
-                   }
-               })
+            if (todos.length > 0) {
+                var t = todos.pop(0);
+                blocked = true;
+                console.log('Running async:', t[1]);
+                var st = +new Date;
+                lastsent = +new Date;
+                httpGetAsync(t[0], t[1], function(x) {
+                    times.push(+new Date - st);
+                    lastsuccess = +new Date;
+                    t[2](x);
+                    document.querySelector('.outgoing').innerText = todos.length;
+                    blocked = false;
+                })
+            }
         }
     </script>
 </head>
@@ -333,6 +369,14 @@
                 <h1 class="font-weight-light">Waiting to connect...</h1>
                 <p class='waiting-msg'></p>
             </div>
+            <div id="lost-connect" style="display:none">
+                <h1 class="font-weight-light">Lost connection with MBED</h1>
+                <p class=''>Reset the device and reload the page.</p>
+            </div>
+            <div id="error-response" style="display:none">
+                <h1 class="font-weight-light">Error response from MBED</h1>
+                <p class=''>Details: <span class='error-detail'></span></p>
+            </div>
             <div id="connected">
                 <h1 class="font-weight-light">Connected to <span class='cur-ip'></span></h1>
 
@@ -359,15 +403,26 @@
                     </div>
                     <div class="col-lg-4">
                         <h3>Mouse</h3>
-                        <input type="range" id="mouseprecision" onchange="mousePrecision=this.value" min=25 max=500 step=25 /> Precision
+                        <div style="white-space: nowrap">
+                        <input type="range" id="mouseprecision" onchange="mousePrecision=this.value;document.querySelector('.mouseprecision').innerText = parseInt(mousePrecision)" min=25 max=500 step=25 /> 
+                            Precision: <span class='mouseprecision'></span> ms</span>
                         <br /><br />
                         <div id="touchpad">
                         </div>
-                        <button id="mouse-left"></button><button id="mouse-right"></button>
+                        <div style="white-space: nowrap; width:300px">
+                            <button id="mouse-left"></button><button id="mouse-right"></button>
+                        </div>
                     </div>
                 </div>
-
             </div>
+
+                <h3>Physical Keyboard:</h3>
+                    <div>
+                <button onclick="send('ps2:enable', function(){})">Enable</button> &nbsp; <button onclick="send('ps2:disable', function(){})">Disable</button>
+                    </div>
+                <br />
+                <p>Outgoing requests: <span class="outgoing"></span></p>
+
         </div>
         </div>
     </div>
