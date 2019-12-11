@@ -35,17 +35,22 @@
         <div class="card border-0 shadow my-5">
         <div class="card-body p-5">
             <h1 class="font-weight-light">Connect to NetKVM</h1>
+            <br />
             
             <form method="get" action="index.html">
                 <label for="ip">
                     IP Address:
-                </label>
-                <input type="text" name="ip" placeholder="192.168.1.2" />
-                <br />
-                <input type="submit" />
+                </label><br />
+                <input type="text" name="ip" placeholder="192.168.1.1" id="ip" />
+                <br /><br />
+                <input type="submit" style="padding: 10px 30px" />
             </form>
         </div>
         </div>
     </div>
+
+    <script>
+        document.querySelector("#ip").focus();
+    </script>
 </body>
 </html>

@@ -60,6 +60,15 @@
   justify-content: center;
   display: flex;
 }
+
+.simple-keyboard-media {
+  display: flex;
+  justify-content: center;
+  width: 300px;
+  zoom: 0.9;
+  margin: 0 auto;
+  border-radius: 5px;
+}
     </style>
     <script type='text/javascript'>
         var IP = window.location.search.split('ip=')[1];
@@ -73,7 +82,7 @@
                 if (r == "OK") {
                     ok();
                 } else {
-                    document.querySelector(".waiting-msg").innerHTML = "Unable to connect: r";
+                    handleError(r);
                 }
             });
         };
@@ -98,6 +107,15 @@
             function kc(c) {
                 bufferKey(";keycode" + genMod() + ":"+c+";printf:");
             }
+            var media = {
+                '{nexttrack}': 'next-track',
+                '{prevtrack}': 'prev-track',
+                '{stop}': 'stop',
+                '{playpause}': 'play-pause',
+                '{mute}': 'mute',
+                '{volup}': 'vol-up',
+                '{voldown}': 'vol-down'
+            };
             var mp = {
                 '{arrowup}': 151,
                 '{arrowdown}': 150,
@@ -147,6 +165,8 @@
                 modLO = !modLO; kc(0);
             } else if(mp[btn] != null) {
                 kc(mp[btn]);
+            } else if (media[btn] != null) {
+                bufferKey(";media:" + media[btn] + ";printf:");
             }
             updateModDisplay();
         }
@@ -356,6 +376,10 @@
                     <span class="sr-only">(current)</span>
                     </a>
             </li>
+            <li class="nav-item">
+                    <a class="nav-link" href="connect.html">Connect
+                        </a>
+                </li>
             </ul>
         </div>
         </div>
@@ -398,8 +422,11 @@
                                 <div class="simple-keyboard-numpad"></div>
                                 <div class="simple-keyboard-numpadEnd"></div>
                             </div-->
+
                             
                         </div>
+
+                        <div class="simple-keyboard-media"></div>
                     </div>
                     <div class="col-lg-4">
                         <h3>Mouse</h3>

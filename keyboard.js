@@ -44,6 +44,18 @@ let keyboard = new Keyboard(".simple-keyboard-main", {
     "{altright}": "alt",
     "{winleft}": "win",
     "{winright}": "win",
+    "{f1}": "F1",
+    "{f2}": "F2",
+    "{f3}": "F3",
+    "{f4}": "F4",
+    "{f5}": "F5",
+    "{f6}": "F6",
+    "{f7}": "F7",
+    "{f8}": "F8",
+    "{f9}": "F9",
+    "{f10}": "F10",
+    "{f11}": "F11",
+    "{f12}": "F12",
   }
 });
 
@@ -65,11 +77,22 @@ let keyboardArrows = new Keyboard(".simple-keyboard-arrows", {
   }
 });
 
-let keyboardNumPad = new Keyboard(".simple-keyboard-numpad", {
+let keyboardMedia = new Keyboard(".simple-keyboard-media", {
   ...commonKeyboardOptions,
   layout: {
     default: [
+        "{prevtrack} {playpause} {stop} {nexttrack}",
+        "{mute} {voldown} {volup}"
     ]
+  },
+  display: {
+    "{prevtrack}": "⏪",
+    "{playpause}": "▶️⏸️",
+    "{stop}": "⏹",
+    "{nexttrack}": "⏩",
+    "{mute}": "🔇",
+    "{voldown}": "🔉-",
+    "{volup}": "🔊+",
   }
 });
 
