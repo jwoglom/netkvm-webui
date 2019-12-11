@@ -253,7 +253,7 @@
                         origx = curx;
                         origy = cury;
                         origst = +new Date;
-                        send("move:"+dx+","+dy, function(d) {});
+                        send("move:"+dx+","+dy, function(d) {}, true);
                         var sum = 0;
                         var cnt = 0;
                         for (var i=times.length>=20 ? times.length - 10 : 0; i<times.length; i++) {
@@ -273,7 +273,7 @@
 
                 var dx = curx-origx;
                 var dy = cury-origy;
-                send("move:" + dx + "," + dy, function(d) { });
+                send("move:" + dx + "," + dy, function(d) { }, true);
 
                 origx = null;
                 origy = null;
@@ -290,19 +290,38 @@
             }
         }
 
-        function send(cmd, cb) {
-            httpGetSync("http://" + IP, "STARTCMD;" + cmd, cb, false);
+        function send(cmd, cb, asy) {
+            if (asy) {
+                httpGetAsync("http://" + IP, "STARTCMD;" + cmd, cb, true);
+            } else {
+                httpGetSync("http://" + IP, "STARTCMD;" + cmd, cb, false);
+            }
         }
 
-        function httpGetAsync(theUrl, data, callback) {
+        asyncin = 0;
+        function httpGetAsync(theUrl, data, callback, direct) {
             var xmlHttp = new XMLHttpRequest();
+            var st = +new Date;
+            if (direct) {
+                asyncin++;
+                document.querySelector('.outgoing').innerText = todos.length+asyncin;
+            }
             xmlHttp.onreadystatechange = function() { 
                 if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
                     if (xmlHttp.responseText == "ERROR") {
                         handleError(data);
                     }
+                    if (direct) {
+                        times.push(+new Date - st);
+                        asyncin--;
+                        document.querySelector('.outgoing').innerText = todos.length+asyncin;
+                    }
                     callback(xmlHttp.responseText);
                 }
+            }
+            xmlHttp.onerror = function() {
+                asyncin--;
+                document.querySelector('.outgoing').innerText = todos.length+asyncin;
             }
             xmlHttp.open("POST", theUrl, true); // true for asynchronous 
             xmlHttp.send(data);
@@ -317,15 +336,15 @@
         todos = [];
         lastsuccess = +new Date;
         lastsent = +new Date;
-        function httpGetSync(theUrl, data, callback) {
+        function httpGetSync(theUrl, data, callback, typ) {
             /*
             var xmlHttp = new XMLHttpRequest();
             xmlHttp.open("POST", theUrl, false);
             xmlHttp.send(data);
             callback(xmlHttp.responseText);
             */
-           todos.push([theUrl, data, callback]);
-           document.querySelector('.outgoing').innerText = todos.length;
+           todos.push([theUrl, data, callback, typ]);
+           document.querySelector('.outgoing').innerText = todos.length+asyncin;
         }
 
         blocked = false;
@@ -335,12 +354,12 @@
         }, 20);
         function loop() {
             if (blocked) {
-                setTimeout(function() {
+                /*setTimeout(function() {
                     if (+new Date - lastsuccess > 10000 && todos.length > 0) {
                         document.querySelector('#connected').style.display = 'none';
                         document.querySelector('#lost-connect').style.display = 'block';
                     }
-                }, 100);
+                }, 100);*/
                 return;
             }
             if (todos.length > 0) {
@@ -349,11 +368,13 @@
                 console.log('Running async:', t[1]);
                 var st = +new Date;
                 lastsent = +new Date;
+                var asyncdone = false;
                 httpGetAsync(t[0], t[1], function(x) {
                     times.push(+new Date - st);
                     lastsuccess = +new Date;
+                    asyncdone = true;
                     t[2](x);
-                    document.querySelector('.outgoing').innerText = todos.length;
+                    document.querySelector('.outgoing').innerText = todos.length+asyncin;
                     blocked = false;
                 })
             }
