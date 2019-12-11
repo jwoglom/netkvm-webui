@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>NetKVM</title>
+    <meta charset="UTF-8">
     <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css">
     <style>
@@ -11,6 +12,54 @@
     #connected {
         display: none;
     }
+    #touchpad {
+        width: 300px;
+        height: 250px;
+        background: gray;
+        border-radius: 20px;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+    #mouse-left, #mouse-right {
+        width: 150px;
+        height: 50px;
+        background: gray;
+    }
+    #mouse-left {
+        border-bottom-left-radius: 20px;
+    }
+    #mouse-right {
+        border-bottom-right-radius: 20px;
+    }
+
+.keyboardContainer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  zoom: 0.9;
+  margin: 0 auto;
+  border-radius: 5px;
+}
+
+.simple-keyboard.hg-theme-default {
+  display: inline-block;
+}
+
+.simple-keyboard-main.simple-keyboard {
+  width: 640px;
+  min-width: 640px;
+  background: none;
+}
+.hg-button.hg-functionBtn.hg-button-space {
+  width: 350px;
+}
+
+
+.simple-keyboard-numpadEnd.simple-keyboard .hg-button {
+  align-items: center;
+  justify-content: center;
+  display: flex;
+}
     </style>
     <script type='text/javascript'>
         var IP = window.location.search.split('ip=')[1];
@@ -27,17 +76,11 @@
                     document.querySelector(".waiting-msg").innerHTML = "Unable to connect: r";
                 }
             });
-
-
-            var Keyboard = window.SimpleKeyboard.default;
-            var virtKeyboard = new Keyboard({
-                onKeyPress: virtKbdPress
-            });
-
         };
         var modSH = false;
         var modAL = false;
         var modCT = false;
+        var modLO = false;
         function virtKbdPress(btn) {
             console.log('btn:', btn);
             function r(c) {
@@ -49,27 +92,80 @@
                 if (modCT) s += "-ctrl";
                 if (modAL) s += "-alt";
                 if(modSH) s += "-shift";
+                if (modLO) s += "-logo";
                 return s;
             }
             function kc(c) {
                 bufferKey(";keycode" + genMod() + ":"+c+";printf:");
             }
+            var mp = {
+                '{arrowup}': 151,
+                '{arrowdown}': 150,
+                '{arrowleft}': 149,
+                '{arrowright}': 148,
+                '{pagedown}': 147,
+                '{pageup}': 146,
+                '{home}': 145,
+                '{insert}': 144,
+                '{numlock}': 143,
+                '{capslock}': 142,
+                '{scrolllock}': 141,
+                '{prtscr}': 140,
+                '{f12}': 139,
+                '{f11}': 138,
+                '{f10}': 137,
+                '{f9}': 136,
+                '{f8}': 135,
+                '{f7}': 134,
+                '{f6}': 133,
+                '{f5}': 132,
+                '{f4}': 131,
+                '{f3}': 130,
+                '{f2}': 129,
+                '{f1}': 128,
+                '{backspace}': 8,
+                '{enter}': 10,
+            }
             if (btn.charAt(0) != '{') {
                 if (genMod().length > 0) {
-                    document.querySelector("#kbd").value += c;
+                    document.querySelector("#kbd").value += btn;
                     kc(btn.charCodeAt(0));
                 } else {
                     r(btn);
                 }
             } else if (btn == '{tab}') {
                 r(String.fromCharCode(9));
-            } else if(btn == '{shift}') {
-                modSH = !modSH;
-            } else if(btn == '')
+            } else if (btn == '{space}') {
+                r(' ');
+            } else if(btn == '{shiftleft}' || btn == '{shiftright}') {
+                modSH = !modSH; kc(0);
+            } else if(btn == '{altleft}' || btn == '{altright}') {
+                modAL = !modAL; kc(0);
+            } else if(btn == '{controlleft}' || btn == '{controlright}') {
+                modCT = !modCT; kc(0);
+            } else if(btn == '{winleft}' || btn == '{winright}') {
+                modLO = !modLO; kc(0);
+            } else if(mp[btn] != null) {
+                kc(mp[btn]);
+            }
+            updateModDisplay();
+        }
+
+        function updateModDisplay() {
+            function highlight(btn, v) {
+                var e = document.querySelector("[data-skbtn='" + btn + "']");
+                e.style.backgroundColor = v ? 'gray' : '';
+            }
+            highlight('{shiftleft}', modSH);
+            highlight('{altleft}', modAL);
+            highlight('{controlleft}', modCT);
+            highlight('{winleft}', modLO);
+
         }
 
         var keyBuffer = "";
         var bufferTime = 75;
+        var mousePrecision = 75;
         function bufferKey(k) {
             keyBuffer += k;
             setTimeout(sendKeyBuffer, bufferTime);
@@ -109,6 +205,52 @@
 
             }
             document.querySelector("#kbd").focus();
+            document.querySelector("#mouseprecision").value = mousePrecision;
+            var origx = null;
+            var origy = null;
+            var origst = null;
+            document.querySelector("#touchpad").onmousedown = function(e) {
+                origx = e.offsetX;
+                origy = e.offsetY;
+                origst = +new Date;
+            }
+            document.querySelector("#touchpad").onmousemove = function(e) {
+                if (origx && origy) {
+                    var curx = e.offsetX;
+                    var cury = e.offsetY;
+
+                    var dx = curx-origx;
+                    var dy = cury-origy;
+                    if (+new Date - origst > mousePrecision) {
+                        origx = curx;
+                        origy = cury;
+                        origst = +new Date;
+                        send("move:"+dx+","+dy, function(d) {});
+                    }
+                }
+
+            }
+            document.querySelector("#touchpad").onmouseup = function(e) {
+                var curx = e.offsetX;
+                var cury = e.offsetY;
+
+                var dx = curx-origx;
+                var dy = cury-origy;
+                send("move:" + dx + "," + dy, function(d) { });
+
+                origx = null;
+                origy = null;
+                origst = null;
+            }
+            document.querySelector("#mouse-left").onclick = function() {
+                send("click:left", function(d) {});
+            }
+            document.querySelector("#mouse-right").onclick = function() {
+                send("click:right", function(d) {});
+            }
+            document.querySelector("#mouse-left").ondblclick = function() {
+                send("click:doubleclick", function(d) {});
+            }
         }
 
         function send(cmd, cb) {
@@ -125,11 +267,29 @@
             xmlHttp.send(data);
         }
 
+        todos = [];
         function httpGetSync(theUrl, data, callback) {
+            /*
             var xmlHttp = new XMLHttpRequest();
             xmlHttp.open("POST", theUrl, false);
             xmlHttp.send(data);
             callback(xmlHttp.responseText);
+            */
+           todos.push([theUrl, data, callback]);
+           if (todos.length == 1) {
+               newTodo();
+           }
+           
+        }
+        function newTodo() {
+            if (todos.length == 0) return;
+            var t = todos.pop(0);
+            httpGetAsync(t[0], t[1], function(x) {
+                   t[2](x);
+                   if (todos.length > 0) {
+                       newTodo();
+                   }
+               })
         }
     </script>
 </head>
@@ -170,11 +330,29 @@
                         <h3>Keyboard</h3>
                         <input type="range" id="delay" onchange="bufferTime=this.value" min=25 max=500 step=25 /> Buffer Delay
                         <br /><br />
-                        <input id="kbd" name="kbd" placeholder="Type here..." style="width: 100%"/><br />
-                        <div class="simple-keyboard"></div>
+                        <input id="kbd" name="kbd" placeholder="Type here or press virtual keyboard button" style="width: 100%"/><br />
+                        <div class="keyboardContainer">
+                            <div class="simple-keyboard-main"></div>
+                    
+                            <div class="controlArrows">
+                                <div class="simple-keyboard-control"></div>
+                                <div class="simple-keyboard-arrows"></div>
+                            </div>
+                    
+                            <!--div class="numPad">
+                                <div class="simple-keyboard-numpad"></div>
+                                <div class="simple-keyboard-numpadEnd"></div>
+                            </div-->
+                            
+                        </div>
                     </div>
                     <div class="col-lg-4">
-                        Foo
+                        <h3>Mouse</h3>
+                        <input type="range" id="mouseprecision" onchange="mousePrecision=this.value" min=25 max=500 step=25 /> Precision
+                        <br /><br />
+                        <div id="touchpad">
+                        </div>
+                        <button id="mouse-left"></button><button id="mouse-right"></button>
                     </div>
                 </div>
 
@@ -184,5 +362,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.min.js"></script>
+    <script src="keyboard.js" charset="UTF-8"></script>
 </body>
 </html>
