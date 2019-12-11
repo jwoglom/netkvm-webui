@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+    <title>NetKVM</title>
+    <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
+    <style>
+    body {
+        background: gray;    
+    }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light static-top mb-5 shadow">
+        <div class="container">
+        <a class="navbar-brand" href="#">NetKVM</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        <div class="collapse navbar-collapse" id="navbarResponsive">
+            <ul class="navbar-nav ml-auto">
+            <li class="nav-item active">
+                <a class="nav-link" href="#">Connect
+                    <span class="sr-only">(current)</span>
+                    </a>
+            </li>
+            </ul>
+        </div>
+        </div>
+    </nav>
+    
+    <!-- Page Content -->
+    <div class="container">
+        <div class="card border-0 shadow my-5">
+        <div class="card-body p-5">
+            <h1 class="font-weight-light">Connect to NetKVM</h1>
+            
+            <form method="get" action="index.html">
+                <label for="ip">
+                    IP Address:
+                </label>
+                <input type="text" name="ip" placeholder="192.168.1.2" />
+                <br />
+                <input type="submit" />
+            </form>
+        </div>
+        </div>
+    </div>
+</body>
+</html>

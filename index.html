@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+    <title>NetKVM</title>
+    <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css">
+    <style>
+    body {
+        background: gray;    
+    }
+    #connected {
+        display: none;
+    }
+    </style>
+    <script type='text/javascript'>
+        var IP = window.location.search.split('ip=')[1];
+        if (IP == null) {
+            location.href = 'connect.html';
+        }
+        window.onload = function() {
+            console.log('load');
+            send("connect:1", function(r) {
+                console.log("resp:", r);
+                if (r == "OK") {
+                    ok();
+                } else {
+                    document.querySelector(".waiting-msg").innerHTML = "Unable to connect: r";
+                }
+            });
+
+
+            var Keyboard = window.SimpleKeyboard.default;
+            var virtKeyboard = new Keyboard({
+                onKeyPress: virtKbdPress
+            });
+
+        };
+        var modSH = false;
+        var modAL = false;
+        var modCT = false;
+        function virtKbdPress(btn) {
+            console.log('btn:', btn);
+            function r(c) {
+                document.querySelector("#kbd").value += c;
+                bufferKey(c);
+            }
+            function genMod() {
+                var s = "";
+                if (modCT) s += "-ctrl";
+                if (modAL) s += "-alt";
+                if(modSH) s += "-shift";
+                return s;
+            }
+            function kc(c) {
+                bufferKey(";keycode" + genMod() + ":"+c+";printf:");
+            }
+            if (btn.charAt(0) != '{') {
+                if (genMod().length > 0) {
+                    document.querySelector("#kbd").value += c;
+                    kc(btn.charCodeAt(0));
+                } else {
+                    r(btn);
+                }
+            } else if (btn == '{tab}') {
+                r(String.fromCharCode(9));
+            } else if(btn == '{shift}') {
+                modSH = !modSH;
+            } else if(btn == '')
+        }
+
+        var keyBuffer = "";
+        var bufferTime = 75;
+        function bufferKey(k) {
+            keyBuffer += k;
+            setTimeout(sendKeyBuffer, bufferTime);
+        }
+        function sendKeyBuffer() {
+            if (keyBuffer.length > 0) {
+                var okb = keyBuffer + "";
+                send("printf:" + okb, function(d) {
+                    if (d == "OK") {
+                        document.querySelector("#kbd").value = document.querySelector("#kbd").value.substring(okb.length);
+                    }
+                });
+                keyBuffer = "";
+            }
+        }
+
+        function ok() {
+            document.querySelector("#waiting-connect").style.display = 'none';
+            document.querySelector("#connected").style.display = 'block';
+            document.querySelector(".cur-ip").innerText = IP;
+            document.querySelector("#delay").value = bufferTime;
+            document.querySelector("#kbd").onkeydown = function(event) {
+                var char = String.fromCharCode(event.keyCode);
+                if (event.shiftKey)
+                    char = char.toUpperCase();
+                else
+                    char = char.toLowerCase();
+                console.log("char: ", event.keyCode, char);
+                if (event.keyCode < 65 || event.keyCode > 122) {
+                    bufferKey(';keycode:' + event.keyCode + ';printf:');
+                } else {
+                    bufferKey(char);
+                }
+                //document.querySelector("#kbd").value = '';
+                event.preventDefault();
+                document.querySelector("#kbd").focus();
+
+            }
+            document.querySelector("#kbd").focus();
+        }
+
+        function send(cmd, cb) {
+            httpGetSync("http://" + IP, "STARTCMD;" + cmd, cb, false);
+        }
+
+        function httpGetAsync(theUrl, data, callback) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.onreadystatechange = function() { 
+                if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+                    callback(xmlHttp.responseText);
+            }
+            xmlHttp.open("POST", theUrl, true); // true for asynchronous 
+            xmlHttp.send(data);
+        }
+
+        function httpGetSync(theUrl, data, callback) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("POST", theUrl, false);
+            xmlHttp.send(data);
+            callback(xmlHttp.responseText);
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light static-top mb-5 shadow">
+        <div class="container">
+        <a class="navbar-brand" href="#">NetKVM</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        <div class="collapse navbar-collapse" id="navbarResponsive">
+            <ul class="navbar-nav ml-auto">
+            <li class="nav-item active">
+                <a class="nav-link" href="#">Home
+                    <span class="sr-only">(current)</span>
+                    </a>
+            </li>
+            </ul>
+        </div>
+        </div>
+    </nav>
+    
+    <!-- Page Content -->
+    <div class="container">
+        <div class="card border-0 shadow my-5">
+        <div class="card-body p-5">
+            <div id="waiting-connect">
+                <h1 class="font-weight-light">Waiting to connect...</h1>
+                <p class='waiting-msg'></p>
+            </div>
+            <div id="connected">
+                <h1 class="font-weight-light">Connected to <span class='cur-ip'></span></h1>
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <h3>Keyboard</h3>
+                        <input type="range" id="delay" onchange="bufferTime=this.value" min=25 max=500 step=25 /> Buffer Delay
+                        <br /><br />
+                        <input id="kbd" name="kbd" placeholder="Type here..." style="width: 100%"/><br />
+                        <div class="simple-keyboard"></div>
+                    </div>
+                    <div class="col-lg-4">
+                        Foo
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.min.js"></script>
+</body>
+</html>
